@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-import random 
+import random
 
 class Scheduler():
     def __init__(self):
@@ -36,10 +36,15 @@ class Scheduler():
             "Alternate Staff Member": 2
         }
 
-        self.assignment = {
-            date: [[None for _ in range(requirements)] for requirements in self.config.values()] for date in self.dates
-        }
-    
+        self.assignment = {}
+        for date in self.dates:
+            self.assignment[date] = {
+                group: [None for _ in range(requirements)]
+                for group, requirements in self.config.items()
+            }
+            self.assignment[date]["all_staff"] = set()
+
+
     def assign(self):
         """
             Handles the main assignment logic.
@@ -56,20 +61,38 @@ class Scheduler():
             assigned += 1
 
         # Tackle one group at a time
-        for group_index in range(len(self.config)):
+        for group in self.config.keys():
             for day in self.assignment.values():
-                day_assignment = day[group_index]
+                day_assignment = day[group]
                 for i in range(len(day_assignment)):
                     # If we can assign the last person, do it!
-                    day_assignment[i] = to_assign.pop()
-        
-        print(self.assignment)
-    
+                        person = to_assign.pop()
+                        ineligible = []
+                        while to_assign and person in day["all_staff"]:
+                            ineligible.append(person)
+                            person = to_assign.pop()
+                        
+                        day_assignment[i] = person
+                        day["all_staff"].add(person)
+                        to_assign = to_assign + ineligible
+                        
+        for day in self.assignment.items():
+            print(day)
+
+    def check_hermione(self):
+        for day in self.assignment.values():
+            if len(day["all_staff"]) != 5:
+                print("Hermione detected!")
+                print(day)
+                break
+        else:
+            print("No Hermiones detected")
+
     def resolve_hermione(self):
         """
             Resolve Hermione conflicts requiring two locations at once
         """
-                    
+        pass
 
 
     def choose_next(self):
@@ -88,11 +111,30 @@ class Scheduler():
         yield from self.choose_next()
         
 
+    def write_out(self):
+        data = pd.DataFrame(self.assignment).T
+        # List of column names containing lists
+        list_columns = self.config.keys()
+        self.expand_lists_to_columns(data, list_columns)
+        data.to_csv("data/out.csv")
+
+    def expand_lists_to_columns(self, df, column_names):
+        for col_name in column_names:
+            max_len = df[col_name].apply(len).max()
+            for i in range(max_len):
+                df[f"{col_name} {i+1}"] = df[col_name].apply(lambda x: x[i] if len(x) > i else None)
+            df.drop(columns=[col_name], inplace=True)
+        df.drop(columns=["all_staff"], inplace=True)
+
+    
+
     def test(self):
         self.import_data()
         self.set_dates()
         self.set_output()
         self.assign()
+        self.check_hermione()
+        self.write_out()
 
 sched = Scheduler()
 sched.test()
