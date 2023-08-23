@@ -59,40 +59,102 @@ class Scheduler():
                 break
             to_assign.append(person)
             assigned += 1
+        
+        random.shuffle(to_assign)
 
         # Tackle one group at a time
         for group in self.config.keys():
             for day in self.assignment.values():
                 day_assignment = day[group]
                 for i in range(len(day_assignment)):
+                    # for _ in range(len(ineligible)):
+                    #     person = ineligible.pop(0)
+                    #     if person in day["all_staff"]:
+                    #         ineligible.append(person)
+                    #         continue
+                    #     day_assignment[i] = person
+
                     # If we can assign the last person, do it!
+                    person = to_assign.pop()
+                    ineligible = []
+                    while to_assign and person in day["all_staff"]:
+                        ineligible.append(person)
                         person = to_assign.pop()
-                        ineligible = []
-                        while to_assign and person in day["all_staff"]:
-                            ineligible.append(person)
-                            person = to_assign.pop()
-                        
-                        day_assignment[i] = person
-                        day["all_staff"].add(person)
-                        to_assign = to_assign + ineligible
+                    
+                    day_assignment[i] = person
+                    day["all_staff"].add(person)
+                    to_assign = to_assign + ineligible
                         
         for day in self.assignment.items():
             print(day)
 
     def check_hermione(self):
-        for day in self.assignment.values():
+        self.hermione_days = []
+        for date, day in self.assignment.items():
             if len(day["all_staff"]) != 5:
                 print("Hermione detected!")
                 print(day)
-                break
-        else:
-            print("No Hermiones detected")
+                self.hermione_days.append(date)
+        
+
+
+    def switch(self, day, person_idx, role):
+        
+        print("Attempting switch")
+
+
+        person = day[role][person_idx]
+        for date, other_day in self.assignment.items():
+            if day == other_day:
+                continue
+            if person in other_day[role]:
+                continue
+            for i in range(len(other_day[role])):
+                other_person = other_day[role][i]
+                if other_person not in day["all_staff"]:
+                    day["all_staff"].add(other_person)
+                    
+                    # TODO: Fix that this assumes that the other person is not a Hermione too.
+                    other_day["all_staff"].remove(other_person)
+
+
+                    other_day["all_staff"].add(person)
+
+                    day[role][person_idx], other_day[role][i] = other_person, person
+                    print("Hermione resolved!")
+                    print(day)
+                    print(other_day)
+                    return
+
+                    
 
     def resolve_hermione(self):
         """
             Resolve Hermione conflicts requiring two locations at once
         """
-        pass
+        if not self.hermione_days:
+            return
+        
+        print("Attempting Hermione fix")
+
+        # Hermione could appear a couple of times. There could be two separate Hermiones on the same day!
+        # We must tread with caution.
+        for herm_day in self.hermione_days:
+            seen = []
+            day = self.assignment[herm_day]
+            for person_idx in range(len(day["Staff Member"])):
+                person = day["Staff Member"][person_idx]
+                if person in seen:
+                    self.switch(day, person_idx, "Staff Member")
+                    seen.append(day["Staff Member"][person_idx])
+                else:
+                    seen.append(person)
+            for person_idx in range(len(day["Alternate Staff Member"])):
+                person = day["Alternate Staff Member"][person_idx]
+                if person in seen:
+                    self.switch(day, person_idx, "Alternate Staff Member")
+                else:
+                    seen.append(person)
 
 
     def choose_next(self):
@@ -134,7 +196,8 @@ class Scheduler():
         self.set_output()
         self.assign()
         self.check_hermione()
-        self.write_out()
+        self.resolve_hermione()
+        # self.write_out()
 
 sched = Scheduler()
 sched.test()
