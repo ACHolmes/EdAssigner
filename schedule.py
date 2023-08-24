@@ -1,55 +1,71 @@
 import pandas as pd
-from datetime import datetime
 import random
 
+
 class Scheduler():
-    def __init__(self):
-        pass
+    def configure(self):
+        """
+            Handles the configuration of the script. This is the only place you should need to edit
+            each semester to generate a new Ed assignment.
+        """
+
+        # Set the path to the authoritative staff roster CSV file. Export this from the Google Sheet!
+        self.staff_roster_file = "data/Authoritative Staff Roster, CS50 Fall 2023 - Staff List.csv"
+        
+        # Configure the number of Assignees required for each category. Normally
+        # we have 3 staff and 2 backups.
+        self.config = {
+            "Staff Member": 3,
+            "Alternate Staff Member": 2
+        }
+
+        # Configure the dates for which we need staff assignments.
+        # Easiest to create a range for the whole semester and then remove some.
+        dates = pd.date_range(start="2023-09-05",end="2023-12-10")
+
+        # Dates we don't need to assign, format: (MM, DD)
+        dates_to_remove = set([(11, 22), (11, 23), (11, 24), (11, 25), (11, 26)])
+
+        remove_objects = []
+        
+        # Iterate through all dates and remove
+        for date in dates:
+            if (date.month, date.day) in dates_to_remove:
+                # Fires, remove_objects contains an object
+                remove_objects.append(date)
+        
+        # Remove unwanted days
+        self.dates = dates.drop(remove_objects)
+
+        self.out_file_path = "data/generated_assignment.csv"
+
+        # Now all configured and good to go! We have the staff info, dates and roles required :)
+
 
     def import_data(self):
         """ Reads in the data from the Staff list CSV file. """
-        data = pd.read_csv("data/Authoritative Staff Roster, CS50 Fall 2023 - Staff List.csv")
+        data = pd.read_csv(self.staff_roster_file)
         self.heads = data[data["staff_position"] == "Head Teaching Fellow (TF)"]
         self.tfs = data[data["staff_position"] == "Teaching Fellow (TF)"]
         self.cas = data[data["staff_position"] == "Course Assistant (CA)"]
 
-    def set_dates(self):
-        """
-            Sets the date objects for all dates that we need Ed assignments.
-        """
-        self.dates = pd.date_range(start="2023-09-05",end="2023-12-10")#.to_pydatetime().tolist()
-
-        dates_to_remove = [(9, 7)]
-
-        # TODO: Fix removal of dates from configuration
-        remove_objects = []
-        for date in self.dates:
-            for month, day in dates_to_remove:
-                if date.month==month and date.day == day:
-                    # Fires, remove_objects contains an object
-                    remove_objects.append(date)
-        
-        # Not removing dates as desired
-        self.dates.drop(remove_objects)
-        print(self.dates)
 
     def set_output(self):
         """
             Configures the output requiremenets. What Staff categories do we have in terms of Ed, and how many are needed for each, each day?
             Also initializes the self.assignment attribute to store the output assignment.
         """
-        # Configure the number of Assignees required for each category
-        self.config = {
-            "Staff Member": 3,
-            "Alternate Staff Member": 2
-        }
-
+        # Initialize empty assignment
         self.assignment = {}
         for date in self.dates:
+
+            # Initially nobody assigned to any role
             self.assignment[date] = {
                 group: [None for _ in range(requirements)]
                 for group, requirements in self.config.items()
             }
+
+            # And all_staff is an empty set for each day
             self.assignment[date]["all_staff"] = set()
 
 
@@ -176,6 +192,7 @@ class Scheduler():
                 # Make the switch
                 day[role][person_idx], other_day[role][i] = other_person, person
                 print("Hermione resolved!")
+                print(day)
                 return
 
                     
@@ -240,12 +257,11 @@ class Scheduler():
     def write_out(self):
         data = pd.DataFrame(self.assignment).T
         # List of column names containing lists
-        list_columns = self.config.keys()
-        self.expand_lists_to_columns(data, list_columns)
-        data.to_csv("data/out.csv")
+        self.expand_lists_to_columns(data)
+        data.to_csv(self.out_file_path)
 
-    def expand_lists_to_columns(self, df, column_names):
-        for col_name in column_names:
+    def expand_lists_to_columns(self, df):
+        for col_name in self.config.keys():
             max_len = df[col_name].apply(len).max()
             for i in range(max_len):
                 df[f"{col_name} {i+1}"] = df[col_name].apply(lambda x: x[i] if len(x) > i else None)
@@ -254,14 +270,14 @@ class Scheduler():
 
     
 
-    def test(self):
+    def pipeline(self):
+        self.configure()
         self.import_data()
-        self.set_dates()
         self.set_output()
         self.assign()
         self.check_hermione()
         self.resolve_hermione()
-        # self.write_out()
+        self.write_out()
 
 sched = Scheduler()
-sched.test()
+sched.pipeline()
