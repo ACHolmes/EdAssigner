@@ -15,8 +15,10 @@ class Scheduler():
         # Configure the number of Assignees required for each category. Normally
         # we have 3 staff and 2 backups.
         self.config = {
-            "Staff Member": 3,
-            "Alternate Staff Member": 2
+            "Staff Member": 3
+            # "Alternate Staff Member": 2 -> we used to have assigned 'backup staff'
+            # another example could be a head TF 'monitor' or something
+            # Currently we just use it to have 3 staff members
         }
 
         # Configure the dates for which we need staff assignments.
@@ -45,10 +47,26 @@ class Scheduler():
     def import_data(self):
         """ Reads in the data from the Staff list CSV file. """
         data = pd.read_csv(self.staff_roster_file)
-        self.heads = data[data["staff_position"] == "Head Teaching Fellow (TF)"]
-        self.tfs = data[data["staff_position"] == "Teaching Fellow (TF)"]
-        self.cas = data[data["staff_position"] == "Course Assistant (CA)"]
+        self.heads = data[data["staff_position"] == "Head Teaching Fellow (TF)"]["full_preferred_name"].tolist()
+        self.tfs = data[data["staff_position"] == "Teaching Fellow (TF)"]["full_preferred_name"].tolist()
+        self.cas = data[data["staff_position"] == "Course Assistant (CA)"]["full_preferred_name"].tolist()
 
+    def add_staff(self):
+        """Manually inserts staff into the system. Can be just 'pass' if not needed."""
+
+        self.tfs += [
+            "Alec Whiting",
+            "Christo Savalas",
+            "Daniel Chang",
+            "Guy White",
+            "Margaret Tanzosh",
+            "Taha Teke"
+        ]
+            
+
+        self.cas += [
+            "Bradley Ross"
+        ]
 
     def set_output(self):
         """
@@ -239,15 +257,15 @@ class Scheduler():
             Generator to give the next person who should be assigned a job.
             Draws from CAs, then TFs, then Head TFs in a loop so that CAs, then TFs most likely to get one extra day.
         """
-        draw_group = list(self.cas.copy(deep=True)["full_preferred_name"])
+        draw_group = self.cas.copy()
         random.shuffle(draw_group)
         for person in draw_group:
             yield person
-        draw_group = list(self.tfs.copy(deep=True)["full_preferred_name"])
+        draw_group = self.tfs.copy()
         random.shuffle(draw_group)
         for person in draw_group:
             yield person
-        draw_group = list(self.heads.copy(deep=True)["full_preferred_name"])
+        draw_group = self.heads.copy()
         random.shuffle(draw_group)
         for person in draw_group:
             yield person
@@ -273,6 +291,7 @@ class Scheduler():
     def pipeline(self):
         self.configure()
         self.import_data()
+        self.add_staff()
         self.set_output()
         self.assign()
         self.check_hermione()

@@ -32,6 +32,10 @@ I know that technically there is an issue in my switch functionality. However, t
 
 Any other issues, feel free to email me at aholmes@college.harvard.edu.
 
+## Potential Improvements
+
+This will give everyone an equal number of total roles, but does nothing to balance roles between role categories. E.g. if we have 'on duty' and 'backup' roles, someone could have 9 appointments as 'on duty', and 9 as 'backup'. If you feel like fixing that, have at it, it shouldn't be too tricky. I would recommend switching the system to assign all categories for a day before moving on, rather than how it currently is, where it will assign all role 1 positions on day x, then all role 1 positions on day x + 1 and so on before coming back to role 2 positions on day x.
+
 ## Other notes
 
 Hermione is the term I use for someone who is initially assigned to roles on the same day more than once, in the spirit of Hermione being at two classes at once. The initial assignment can permit some Hermione-like behavior, but it is checked for at the end and corrected. If Hermione-like behavior is detected, it should print the assignemnt(s) for days with Hermione-like characters, and then 'Hermione resolved!' and the updated assignments for those days.
